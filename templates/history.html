@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>History</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; background: #0f1115; color: #eee; }
+        .card { background: #1a1d24; border-radius: 12px; padding: 18px; margin-bottom: 18px; border: 1px solid #333; }
+        .approved { border-left: 4px solid #3ddc84; }
+        .rejected { border-left: 4px solid #ff5c5c; }
+        a { color: #4f7cff; }
+    </style>
+</head>
+<body>
+    <p><a href="/">&larr; Back</a></p>
+    <h1>History</h1>
+    {% if not drafts %}
+        <p>No decisions yet.</p>
+    {% endif %}
+    {% for d in drafts %}
+    <div class="card {{ 'approved' if d.approved else 'rejected' }}">
+        <p>{{ d.caption_or_script }}</p>
+        <p style="font-size:13px;color:#777;">{{ 'Approved' if d.approved else 'Rejected' }} &middot; Mode: {{ d.mode }}</p>
+    </div>
+    {% endfor %}
+</body>
+</html>
