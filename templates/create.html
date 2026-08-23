@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Post</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; background: #0f1115; color: #eee; }
+        label { display: block; margin-top: 16px; font-size: 14px; color: #aaa; }
+        input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1d24; color: #eee; font-size: 16px; margin-top: 6px; box-sizing: border-box; }
+        button { margin-top: 24px; background: #4f7cff; color: white; padding: 14px 22px; border-radius: 10px; border: none; font-size: 16px; }
+        a { color: #4f7cff; }
+    </style>
+</head>
+<body>
+    <p><a href="/">&larr; Back</a></p>
+    <h1>Create a New Post</h1>
+    <form method="POST">
+        <label>Mode</label>
+        <select name="mode" id="mode" onchange="toggleFields()">
+            <option value="real">Real Moment (your own photo/video)</option>
+            <option value="fictional">Fictional Story (animated / scripted)</option>
+        </select>
+
+        <div id="real-fields">
+            <label>File reference (filename or description of the photo/video)</label>
+            <input type="text" name="file_reference" placeholder="e.g. gym_photo_today.jpg">
+        </div>
+
+        <div id="fictional-fields" style="display:none;">
+            <label>Character name</label>
+            <input type="text" name="character_name" placeholder="e.g. Finn the Fox">
+            <label>Audience</label>
+            <input type="text" name="audience" placeholder="e.g. children, general, adults">
+        </div>
+
+        <label>Describe what happened, or your story idea</label>
+        <textarea name="description" rows="4" placeholder="Tell your manager what this post is about..."></textarea>
+
+        <button type="submit">Send to My Manager</button>
+    </form>
+
+    <script>
+        function toggleFields() {
+            var mode = document.getElementById('mode').value;
+            document.getElementById('real-fields').style.display = mode === 'real' ? 'block' : 'none';
+            document.getElementById('fictional-fields').style.display = mode === 'fictional' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
