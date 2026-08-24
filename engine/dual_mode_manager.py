@@ -70,7 +70,7 @@ class UnifiedManager:
         fingerprint = self.voice_profile.build_voice_fingerprint()
 
         if not self.api_key:
-            result = self._fallback(base)
+            result = self._fallback(base, reason="no_api_key")
             result["mode"] = base["mode"]
             result["status"] = "awaiting_approval"
             result["suggested_post_time"] = (datetime.now() + timedelta(hours=3)).strftime("%A %I:%M %p")
@@ -78,23 +78,33 @@ class UnifiedManager:
 
         if base["mode"] == "real":
             instruction = (
-                f"This is a REAL photo/video the user actually captured. Write a caption in "
-                f"their real voice, do not invent events beyond what they described: "
-                f"'{base['seed_content']}'."
+                f"This is a REAL photo/video the user actually captured. Their rough, unpolished "
+                f"note about it is: '{base['seed_content']}'. Do NOT just repeat or lightly rephrase "
+                f"this note. Instead, transform it into a genuinely well-written, scroll-stopping "
+                f"social media caption in their authentic voice: add a strong hook line, texture, "
+                f"personality and rhythm, the way a skilled ghostwriter would elevate a rough voice "
+                f"memo into a finished post. Never invent events, people, places or details that "
+                f"were not implied by their note."
             )
         else:
             instruction = (
                 f"This is a FULLY FICTIONAL story for a character named {base['character_name']}, "
-                f"aimed at audience: {base['audience']}. Build a short script/story beat from this "
-                f"idea: '{base['seed_content']}'. It is understood to be fictional content, not a "
-                f"real event, keep it appropriate for the stated audience."
+                f"aimed at audience: {base['audience']}. Build a short, vivid, well-crafted script or "
+                f"story beat from this raw idea: '{base['seed_content']}'. Do not just restate the "
+                f"idea, actually develop it with scene detail, character voice and a clear beginning "
+                f"and turn, appropriate for the stated audience. It is understood to be fictional, "
+                f"not a real event."
             )
 
         system_prompt = (
-            f"You are the content manager for {fingerprint['username']}. Niche: {self.niche}. "
-            f"Rules: {self.rules}. Voice reference lines: {fingerprint['example_lines']}. "
-            f"{instruction} Output ONLY valid JSON with keys: caption_or_script, hashtags, "
-            f"presenter_note, flagged_for_review. No markdown, no code fences, just raw JSON."
+            f"You are an elite ghostwriter and social media content manager for "
+            f"{fingerprint['username']}. Niche: {self.niche}. Rules: {self.rules}. "
+            f"Voice reference lines from their own best performing past posts: "
+            f"{fingerprint['example_lines']}. Match that tone, rhythm and personality closely. "
+            f"{instruction} "
+            f"Output ONLY valid JSON with keys: caption_or_script, hashtags, presenter_note, "
+            f"flagged_for_review. presenter_note should be a short, specific note about what you "
+            f"changed or emphasized, not a generic phrase. No markdown, no code fences, just raw JSON."
         )
 
         try:
@@ -113,20 +123,20 @@ class UnifiedManager:
             raw = data["candidates"][0]["content"]["parts"][0]["text"]
             raw = raw.strip().replace("```json", "").replace("```", "").strip()
             result = json.loads(raw)
-        except Exception:
-            result = self._fallback(base)
+        except Exception as e:
+            result = self._fallback(base, reason=str(e))
 
         result["mode"] = base["mode"]
         result["status"] = "awaiting_approval"
         result["suggested_post_time"] = (datetime.now() + timedelta(hours=3)).strftime("%A %I:%M %p")
         return result
 
-    def _fallback(self, base):
+    def _fallback(self, base, reason="unknown"):
         return {
             "caption_or_script": f"Draft based on: {base['seed_content']}",
-            "hashtags": ["#" + self.niche.replace(" ", "")],
-            "presenter_note": "Here is a draft, take a look and let me know.",
-            "flagged_for_review": False,
+            "hashtags": ["#" + self.niche.replace(" ", "").replace(",", "")],
+            "presenter_note": f"AI generation unavailable right now (reason: {reason}), showing a basic placeholder instead.",
+            "flagged_for_review": True,
         }
 
 
