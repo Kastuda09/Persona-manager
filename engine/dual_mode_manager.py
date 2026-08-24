@@ -126,8 +126,8 @@ class UnifiedManager:
         # backoff, so retry the primary model a couple of times, then fall
         # back to a lighter/less busy model before giving up entirely.
         candidates = [
-            (GEMINI_URL, [1, 3]),
-            (GEMINI_URL_BACKUP, [1]),
+            (GEMINI_URL, [2]),
+            (GEMINI_URL_BACKUP, [2]),
         ]
 
         for url, wait_times in candidates:
@@ -135,7 +135,7 @@ class UnifiedManager:
                 if wait_s:
                     time.sleep(wait_s)
                 try:
-                    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                    resp = requests.post(url, headers=headers, json=payload, timeout=15)
                     resp.raise_for_status()
                     data = resp.json()
                     raw = data["candidates"][0]["content"]["parts"][0]["text"]
