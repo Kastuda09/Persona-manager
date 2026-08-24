@@ -2,20 +2,28 @@
 MAIN WEB APP
 A simple Flask site with:
 - A home page
-- A "create post" form (real moment or fictional story)
+- A "create post" form (real moment or fictional story), including real
+  photo/video upload for Real Moment mode
 - An approval queue (drafts sit here until Joy approves or rejects)
 - Everything stored in memory for now (upgrade to a real database later)
 """
 
 import os
 import sys
+import uuid
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "engine"))
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
 from unified_engine import UserVoiceProfile
 from dual_mode_manager import UnifiedManager, RealMomentSource, FictionalStorySource
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "mp4", "mov", "webm"}
+VIDEO_EXTENSIONS = {"mp4", "mov", "webm"}
 
 # --- one demo profile for now, this becomes per-user accounts later ---
 profile = UserVoiceProfile(
@@ -39,6 +47,31 @@ DRAFTS = []
 draft_id_counter = 1
 
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def save_uploaded_file(file_storage):
+    """Saves the uploaded file to disk and returns (media_url, media_type), or (None, None)."""
+    if not file_storage or file_storage.filename == "":
+        return None, None
+    if not allowed_file(file_storage.filename):
+        return None, None
+
+    ext = file_storage.filename.rsplit(".", 1)[1].lower()
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    file_storage.save(os.path.join(UPLOAD_FOLDER, unique_name))
+
+    media_type = "video" if ext in VIDEO_EXTENSIONS else "image"
+    media_url = url_for("uploaded_file", filename=unique_name)
+    return media_url, media_type
+
+
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
 @app.route("/")
 def home():
     return render_template("home.html", pending_count=len([d for d in DRAFTS if d["approved"] is None]))
@@ -49,9 +82,14 @@ def create():
     global draft_id_counter
     if request.method == "POST":
         mode = request.form.get("mode")
+        media_url, media_type = None, None
+
         if mode == "real":
+            uploaded = request.files.get("media_file")
+            media_url, media_type = save_uploaded_file(uploaded)
+            file_reference = uploaded.filename if uploaded and uploaded.filename else "no_file_provided"
             source = RealMomentSource(
-                file_reference=request.form.get("file_reference", "no_file_provided"),
+                file_reference=file_reference,
                 moment_description=request.form.get("description", ""),
             )
         else:
@@ -64,6 +102,8 @@ def create():
         result = manager.process(source)
         result["id"] = draft_id_counter
         result["approved"] = None
+        result["media_url"] = media_url
+        result["media_type"] = media_type
         draft_id_counter += 1
         DRAFTS.append(result)
         return redirect(url_for("queue"))
