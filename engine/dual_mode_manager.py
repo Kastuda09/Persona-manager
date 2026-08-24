@@ -110,7 +110,10 @@ class UnifiedManager:
         try:
             resp = requests.post(
                 GEMINI_URL,
-                params={"key": self.api_key},
+                headers={
+                    "Content-Type": "application/json",
+                    "X-goog-api-key": self.api_key,
+                },
                 json={
                     "system_instruction": {"parts": [{"text": system_prompt}]},
                     "contents": [{"role": "user", "parts": [{"text": base["seed_content"]}]}],
