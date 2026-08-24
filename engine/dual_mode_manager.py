@@ -13,11 +13,14 @@ queue, and posting system don't care which mode it came from.
 
 import os
 import json
+import time
 import requests
 from datetime import datetime, timedelta
 
 GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+GEMINI_MODEL_BACKUP = "gemini-flash-lite-latest"
+GEMINI_URL_BACKUP = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_BACKUP}:generateContent"
 
 
 class ContentSource:
@@ -107,27 +110,46 @@ class UnifiedManager:
             f"changed or emphasized, not a generic phrase. No markdown, no code fences, just raw JSON."
         )
 
-        try:
-            resp = requests.post(
-                GEMINI_URL,
-                headers={
-                    "Content-Type": "application/json",
-                    "X-goog-api-key": self.api_key,
-                },
-                json={
-                    "system_instruction": {"parts": [{"text": system_prompt}]},
-                    "contents": [{"role": "user", "parts": [{"text": base["seed_content"]}]}],
-                    "generationConfig": {"temperature": 0.9, "maxOutputTokens": 500},
-                },
-                timeout=30,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            raw = data["candidates"][0]["content"]["parts"][0]["text"]
-            raw = raw.strip().replace("```json", "").replace("```", "").strip()
-            result = json.loads(raw)
-        except Exception as e:
-            result = self._fallback(base, reason=str(e))
+        payload = {
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": base["seed_content"]}]}],
+            "generationConfig": {"temperature": 0.9, "maxOutputTokens": 500},
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": self.api_key,
+        }
+
+        result = None
+        last_error = "unknown"
+        # Google's own guidance for 503/overload errors is exponential
+        # backoff, so retry the primary model a couple of times, then fall
+        # back to a lighter/less busy model before giving up entirely.
+        candidates = [
+            (GEMINI_URL, [1, 3]),
+            (GEMINI_URL_BACKUP, [1]),
+        ]
+
+        for url, wait_times in candidates:
+            for wait_s in [0] + wait_times:
+                if wait_s:
+                    time.sleep(wait_s)
+                try:
+                    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    raw = data["candidates"][0]["content"]["parts"][0]["text"]
+                    raw = raw.strip().replace("```json", "").replace("```", "").strip()
+                    result = json.loads(raw)
+                    break
+                except Exception as e:
+                    last_error = str(e)
+                    result = None
+            if result is not None:
+                break
+
+        if result is None:
+            result = self._fallback(base, reason=last_error)
 
         result["mode"] = base["mode"]
         result["status"] = "awaiting_approval"
