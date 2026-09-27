@@ -62,11 +62,14 @@ class FictionalStorySource(ContentSource):
 
 class UnifiedManager:
     """ Same manager, handles either source type identically from here on. """
-    def __init__(self, voice_profile, niche, rules, api_key=None):
+    def __init__(self, voice_profile, niche, rules, api_key=None, engagement_learner=None):
         self.voice_profile = voice_profile
         self.niche = niche
         self.rules = rules
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        # optional: once real posts are published and performance data comes
+        # back in, this steers new content toward what actually resonates
+        self.engagement_learner = engagement_learner
 
     def process(self, source: ContentSource):
         base = source.to_draft()
@@ -99,15 +102,25 @@ class UnifiedManager:
                 f"not a real event."
             )
 
+        engagement_notes = ""
+        if self.engagement_learner is not None:
+            engagement_notes = (
+                f"Real audience performance data from published posts so far: "
+                f"{self.engagement_learner.build_engagement_notes()} "
+            )
+
         system_prompt = (
             f"You are an elite ghostwriter and social media content manager for "
             f"{fingerprint['username']}. Niche: {self.niche}. Rules: {self.rules}. "
             f"Voice reference lines from their own best performing past posts: "
             f"{fingerprint['example_lines']}. Match that tone, rhythm and personality closely. "
+            f"{engagement_notes}"
             f"{instruction} "
             f"Output ONLY valid JSON with keys: caption_or_script, hashtags, presenter_note, "
             f"flagged_for_review. presenter_note should be a short, specific note about what you "
-            f"changed or emphasized, not a generic phrase. No markdown, no code fences, just raw JSON."
+            f"changed or emphasized, not a generic phrase. IMPORTANT: hashtags MUST be a JSON array "
+            f"of separate short strings, for example [\"#trading\", \"#lifestyle\"], never one combined "
+            f"string. No markdown, no code fences, just raw JSON."
         )
 
         payload = {
@@ -150,11 +163,39 @@ class UnifiedManager:
 
         if result is None:
             result = self._fallback(base, reason=last_error)
+        else:
+            result["hashtags"] = self._normalize_hashtags(result.get("hashtags"))
 
         result["mode"] = base["mode"]
         result["status"] = "awaiting_approval"
         result["suggested_post_time"] = (datetime.now() + timedelta(hours=3)).strftime("%A %I:%M %p")
         return result
+
+    def _normalize_hashtags(self, hashtags):
+        """Guarantees hashtags is always a clean list of separate tag strings,
+        no matter what shape the AI actually returned (single string, list
+        with one merged string, etc). Prevents the template's join(' ') from
+        ever spacing out individual characters."""
+        if hashtags is None:
+            return []
+        if isinstance(hashtags, str):
+            hashtags = [hashtags]
+        if not isinstance(hashtags, list):
+            return []
+
+        cleaned = []
+        for tag in hashtags:
+            if not isinstance(tag, str):
+                continue
+            # split in case one entry contains multiple space-separated tags
+            for piece in tag.split():
+                piece = piece.strip()
+                if not piece:
+                    continue
+                if not piece.startswith("#"):
+                    piece = "#" + piece
+                cleaned.append(piece)
+        return cleaned
 
     def _fallback(self, base, reason="unknown"):
         return {
