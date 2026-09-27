@@ -11,7 +11,7 @@ import json
 import requests
 from datetime import datetime, timedelta
 
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
@@ -53,11 +53,14 @@ class UserVoiceProfile:
 class PersonalizedContentEngine:
     """ One user = one instance of this. Their own learned voice, their own output. """
 
-    def __init__(self, voice_profile, niche, rules, api_key=None):
+    def __init__(self, voice_profile, niche, rules, api_key=None, engagement_learner=None):
         self.voice_profile = voice_profile
         self.niche = niche
         self.rules = rules
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        # optional: once real posts are published and performance data comes
+        # back in, this steers new content toward what actually resonates
+        self.engagement_learner = engagement_learner
 
     def collect_input(self, trigger_type, trigger_content):
         fingerprint = self.voice_profile.build_voice_fingerprint()
@@ -74,12 +77,18 @@ class PersonalizedContentEngine:
             return self._fallback_template(collected_input)
 
         fp = collected_input["fingerprint"]
+        engagement_notes = ""
+        if self.engagement_learner is not None:
+            engagement_notes = (
+                f" Real audience performance data so far: {self.engagement_learner.build_engagement_notes()}"
+            )
         system_prompt = (
             f"You write social content as a specific real person, username {fp['username']}. "
             f"Their background: {fp['background']}. "
             f"Niche: {collected_input['niche']}. Rules: {collected_input['rules']}. "
             f"Here are examples of their own best performing past posts, match this exact "
-            f"voice, rhythm and personality, do not sound generic: {fp['example_lines']}. "
+            f"voice, rhythm and personality, do not sound generic: {fp['example_lines']}."
+            f"{engagement_notes} "
             f"Output ONLY valid JSON with keys: hook, body, closing_question, hashtags, flagged_for_review. "
             f"No markdown, no code fences, just raw JSON."
         )
