@@ -214,6 +214,62 @@
             <span class="status-tag {{ 'ok' if d.approved else 'no' }}">{{ 'Approved' if d.approved else 'Rejected' }}</span>
             <span class="pill">{{ d.mode }}</span>
         </div>
+
+        {% if d.approved and d.media_type == 'video' %}
+        <div style="margin-top:14px;">
+            {% if d.published %}
+                <span class="status-tag ok">&#9989; Published to YouTube</span>
+                {% if d.youtube_video_id %}
+                <div style="margin-top:6px;"><a href="https://www.youtube.com/watch?v={{ d.youtube_video_id }}" target="_blank">View on YouTube &rarr;</a></div>
+                {% endif %}
+
+                {% if d.performance %}
+                <div class="meta-row" style="margin-top:10px;">
+                    <span class="pill">{{ d.performance.views }} views</span>
+                    <span class="pill">{{ d.performance.likes }} likes</span>
+                    <span class="pill">{{ d.performance.comment_count }} comments</span>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/sync/{{ d.id }}" style="margin-top:10px;">
+                    <button class="btn btn-secondary" type="submit" style="width:100%;">
+                        {{ 'Refresh Performance' if d.performance else 'Check Performance' }}
+                    </button>
+                </form>
+                {% if d.sync_error %}
+                <p style="color: var(--bad); font-size: 13px; margin-top:8px;">{{ d.sync_error }}</p>
+                {% endif %}
+            {% else %}
+                <form method="POST" action="/publish/{{ d.id }}">
+                    <button class="btn btn-primary" type="submit" style="width:100%;">Publish to YouTube</button>
+                </form>
+                {% if d.publish_error %}
+                <p style="color: var(--bad); font-size: 13px; margin-top:8px;">{{ d.publish_error }}</p>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if d.approved %}
+        <div style="margin-top:14px; border-top: 1px solid var(--border); padding-top:14px;">
+            {% if d.avatar_video_status == 'completed' and d.avatar_video_url %}
+                <span class="status-tag ok">&#9989; Avatar video ready</span>
+                <div style="margin-top:6px;"><a href="{{ d.avatar_video_url }}" target="_blank">Watch avatar video &rarr;</a></div>
+            {% elif d.avatar_video_status == 'processing' %}
+                <p style="color: var(--muted); font-size: 13px; margin: 0 0 8px;">Avatar video is rendering...</p>
+                <form method="POST" action="/check_avatar_video/{{ d.id }}">
+                    <button class="btn btn-secondary" type="submit" style="width:100%;">Check Status</button>
+                </form>
+            {% else %}
+                <form method="POST" action="/generate_avatar_video/{{ d.id }}">
+                    <button class="btn btn-secondary" type="submit" style="width:100%;">Generate Avatar Video From This Script</button>
+                </form>
+            {% endif %}
+            {% if d.avatar_error %}
+            <p style="color: var(--bad); font-size: 13px; margin-top:8px;">{{ d.avatar_error }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 </body>
