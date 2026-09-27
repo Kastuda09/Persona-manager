@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Digital Twin - Persona Manager</title>
+    
+<style>
+    :root {
+        --bg: #0b0d12;
+        --panel: #151822;
+        --panel-2: #1c202c;
+        --border: #262b3a;
+        --text: #f2f3f7;
+        --muted: #9096a8;
+        --accent: #6d8bff;
+        --accent-2: #8f6dff;
+        --good: #3ddc84;
+        --bad: #ff5c7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+        background: radial-gradient(circle at top, #131622 0%, #0b0d12 55%);
+        color: var(--text);
+        line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    .top-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: 0.2px;
+    }
+    .brand .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 14px rgba(109,139,255,0.7);
+    }
+    .back-link {
+        font-size: 14px;
+        color: var(--muted);
+    }
+    h1 {
+        font-size: 26px;
+        margin: 0 0 6px;
+        letter-spacing: -0.3px;
+    }
+    .subtitle {
+        color: var(--muted);
+        font-size: 15px;
+        margin: 0 0 28px;
+    }
+    .card {
+        background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 18px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+    }
+    label {
+        display: block;
+        margin-top: 18px;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    input[type="text"], select, textarea {
+        width: 100%;
+        padding: 13px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #10121a;
+        color: var(--text);
+        font-size: 15px;
+        transition: border-color 0.15s ease;
+    }
+    input[type="text"]:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+    input[type="file"] {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px dashed var(--border);
+        background: #10121a;
+        color: var(--muted);
+        font-size: 14px;
+    }
+    button, .btn {
+        display: inline-block;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 13px 22px;
+        border-radius: 12px;
+        border: none;
+        transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+    button:hover, .btn:hover { opacity: 0.92; }
+    button:active, .btn:active { transform: scale(0.98); }
+    .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white;
+        text-decoration: none;
+    }
+    .btn-secondary {
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        text-decoration: none;
+    }
+    .btn-approve { background: var(--good); color: #06210f; }
+    .btn-reject { background: var(--bad); color: #2b0710; }
+    .badge {
+        background: var(--bad);
+        color: white;
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-size: 13px;
+        margin-left: 6px;
+        font-weight: 600;
+    }
+    .pill {
+        display: inline-block;
+        background: rgba(109,139,255,0.12);
+        color: var(--accent);
+        border: 1px solid rgba(109,139,255,0.3);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 6px;
+    }
+    .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 12px;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 14px; }
+</style>
+
+</head>
+<body>
+    <div class="top-nav">
+        <div class="brand"><span class="dot"></span> Persona Manager</div>
+        <a class="back-link" href="/settings">&larr; Back</a>
+    </div>
+
+    <h1>Your Digital Twin</h1>
+    <p class="subtitle">Upload one short clip of yourself speaking clearly. Your manager will use it to generate brand new videos of you, in your own likeness, for every future script, without ever filming again.</p>
+
+    {% if avatar_error %}
+    <div class="card" style="border-color: #e5484d; background: rgba(229,72,77,0.08); color: #ffb3b5;">
+        {{ avatar_error }}
+    </div>
+    {% endif %}
+
+    {% if not heygen_configured %}
+    <div class="card">
+        <p style="margin:0; color:var(--muted); font-size:14px;">
+            Not set up on this server yet. This needs a one-time HeyGen account and API key before a digital twin can be created.
+        </p>
+    </div>
+    {% elif digital_twin.created %}
+    <div class="card">
+        <p style="margin:0 0 4px; font-weight:700; font-size:16px;">&#9989; Digital twin created</p>
+        <p style="margin:0; color:var(--muted); font-size:14px;">Your manager can now generate new videos of you from any approved script.</p>
+    </div>
+    {% else %}
+    <form method="POST" action="/avatar/setup" enctype="multipart/form-data">
+        <div class="card">
+            <label>Training clip (15 to 30 seconds, clear face and voice)</label>
+            <input type="file" name="training_clip" accept="video/*" required>
+            <button class="btn btn-primary" type="submit" style="width:100%; margin-top:18px;">Create My Digital Twin</button>
+        </div>
+    </form>
+    {% endif %}
+</body>
+</html>
